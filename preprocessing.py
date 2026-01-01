@@ -80,11 +80,10 @@ def preprocess_data(file_path):
     Orchestrates the preprocessing pipeline for the transaction data.
     """
     # Define column names based on assumed input structure
-    date_cols = ['Date']  # Assuming a 'Date' column exists
-    credit_col = 'Credit' # Assuming a 'Credit' column exists
-    debit_col = 'Debit'   # Assuming a 'Debit' column exists
-    description_col = 'Description' # Assuming a 'Description' column exists
-    
+    date_cols = ['TransactionDate']
+    amount_col = 'TransactionAmountUSD'
+    description_cols = ['TransactionName', 'NormalizedEntity']
+
     # Define output column names
     new_amount_col = 'SignedAmount'
     credit_flag_col = 'IsCredit'
@@ -96,24 +95,23 @@ def preprocess_data(file_path):
     # 2. Parse Dates
     df = parse_dates(df, date_cols)
 
-    # Identify all numeric columns for overflow fixing and schema validation
-    numeric_cols_to_fix = [credit_col, debit_col] 
-    
-    # 3. Fix Excel Overflow Cells
-    df = fix_excel_overflow(df, numeric_cols_to_fix)
-
-    # 4. Convert Credit/Debit to a single signed amount
-    df = convert_credit_debit(df, credit_col, debit_col, new_amount_col)
 
     # 5. Normalize text fields
-    df = normalize_text_fields(df, [description_col])
+    # Assign the existing amount column to new_amount_col as it's already signed
+    df[new_amount_col] = df[amount_col]
+
+    # 3. Normalize text fields
+    df = normalize_text_fields(df, description_cols)
+
+    # 4. Flag credit vs debit
+    df = flag_credit_debit(df, new_amount_col, credit_flag_col, debit_flag_col)
 
     # 6. Flag credit vs debit
     df = flag_credit_debit(df, new_amount_col, credit_flag_col, debit_flag_col)
 
     # Define the expected final schema for validation
-    expected_columns = date_cols + [description_col, new_amount_col, credit_flag_col, debit_flag_col]
-    numeric_cols = [new_amount_col, credit_flag_col, debit_flag_col]
+    expected_columns = date_cols + description_cols + [amount_col, new_amount_col, credit_flag_col, debit_flag_col, 'TransactionClassification', 'MerchantClassification', 'IsCreditCardExpense']
+    numeric_cols = [amount_col, new_amount_col, credit_flag_col, debit_flag_col, 'IsCreditCardExpense']
 
     # 7. Validate and enforce a clean, consistent schema
     df = validate_schema(df, expected_columns, numeric_cols, date_cols)
@@ -122,24 +120,13 @@ def preprocess_data(file_path):
 
 if __name__ == "__main__":
     # Example usage:
-    # Create a dummy Data.xlsx for demonstration
-    data = {
-        'Date': ['2023-01-01', '2023-01-02', '########', '2023-01-04'],
-        'Description': ['ELECTRONIC PAYMENT', 'WEB AUTH PURCHASE', 'ATM WITHDRAWAL', 'SALARY'],
-        'Credit': [100.50, np.nan, np.nan, 2000.00],
-        'Debit': [np.nan, 25.75, 50.00, np.nan],
-    }
-    dummy_df = pd.DataFrame(data)
-    dummy_df.to_excel("Data.xlsx", index=False)
-    print("Created dummy Data.xlsx for demonstration.")
-
     try:
         cleaned_df = preprocess_data("Data.xlsx")
         print("\nPreprocessing complete. Cleaned DataFrame head:")
         print(cleaned_df.head())
-        # You can save the cleaned DataFrame to a CSV or another format here
-        # cleaned_df.to_csv("cleaned_data.csv", index=False)
-        # print("\nCleaned data saved to cleaned_data.csv")
+        cleaned_df.to_csv("cleaned_data.csv", index=False)
+        print("\nCleaned data saved to cleaned_data.csv")
     except Exception as e:
         print(f"\nAn error occurred during preprocessing: {e}")
+
 
