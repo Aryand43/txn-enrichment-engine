@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from enrichment import enrich_transactions
 
 def read_data(file_path):
     """
@@ -124,8 +125,14 @@ if __name__ == "__main__":
         cleaned_df = preprocess_data("Data.xlsx")
         print("\nPreprocessing complete. Cleaned DataFrame head:")
         print(cleaned_df.head())
-        cleaned_df.to_csv("cleaned_data.csv", index=False)
-        print("\nCleaned data saved to cleaned_data.csv")
+        # cleaned_df.to_csv("cleaned_data.csv", index=False)
+        # print("\nCleaned data saved to cleaned_data.csv")
+
+        enriched_df = enrich_transactions(cleaned_df.copy())
+        print("\nEnrichment complete. Enriched DataFrame head:")
+        print(enriched_df.head())
+        enriched_df.to_csv("enriched_data.csv", index=False)
+        print("\nEnriched data saved to enriched_data.csv")
     except Exception as e:
         print(f"\nAn error occurred during preprocessing: {e}")
 
